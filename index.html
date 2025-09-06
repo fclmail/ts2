@@ -1,138 +1,99 @@
 <!doctype html>
 <html>
 <head>
-<meta charset="utf-8" />
-<title>Polygon Arbitrage Frontend — USDC FlashArb</title>
-<meta name="viewport" content="width=device-width,initial-scale=1" />
-<style>
-body { font-family: Inter, system-ui, Arial; max-width: 980px; margin: 24px auto; padding: 0 16px; color:#111; background-color: #00ff00; }
-h1 { font-size:20px; margin-bottom:6px; }
-label { display:block; margin-top:10px; font-size:13px; }
-input, select, button { padding:8px; font-size:14px; margin-top:6px; width:100%; box-sizing:border-box; }
-.row { display:flex; gap:8px; }
-.small { width:140px; }
-#log { white-space:pre-wrap; background:#0f1724; color:#d1fae5; padding:12px; border-radius:6px; margin-top:12px; max-height:360px; overflow:auto; font-family:monospace; font-size:13px; }
-.ok { color:green }
-.bad { color:crimson }
-</style>
-<script src="https://cdn.jsdelivr.net/npm/ethers@5.7.2/dist/ethers.min.js"></script>
+  <meta charset="utf-8" />
+  <title>Polygon Arbitrage Frontend — USDC FlashArb</title>
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <style>
+    body {
+      font-family: Inter, system-ui, Arial;
+      max-width: 980px;
+      margin: 24px auto;
+      padding: 0 16px;
+      color:#111;
+      background-color: #00ff00; /* Electric green background */
+    }
+    h1 { font-size:20px; margin-bottom:6px; }
+    label { display:block; margin-top:10px; font-size:13px; }
+    input, select, button {
+      padding:8px;
+      font-size:14px;
+      margin-top:6px;
+      width:100%;
+      box-sizing:border-box;
+    }
+    .row { display:flex; gap:8px; }
+    .small { width:140px; }
+    #log {
+      white-space:pre-wrap;
+      background:#0f1724;
+      color:#d1fae5;
+      padding:12px;
+      border-radius:6px;
+      margin-top:12px;
+      max-height:360px;
+      overflow:auto;
+      font-family:monospace;
+      font-size:13px;
+    }
+    .ok { color:green }
+    .bad { color:crimson }
+  </style>
 </head>
 <body>
-<h1>Polygon Arbitrage Frontend — USDC FlashArb</h1>
+  <h1>Polygon Arbitrage Frontend — USDC FlashArb</h1>
 
-<div>
-  <label>Contract (read-only)</label>
-  <div id="contractAddr">0xC42293b1C5cFDd7D5cf2ad1c46704e706bb755f7</div>
-</div>
+  <div>
+    <label>Contract (read-only)</label>
+    <div id="contractAddr">0xC42293b1C5cFDd7D5cf2ad1c46704e706bb755f7</div>
+  </div>
 
-<label>RPC / Network (Polygon)</label>
-<select id="rpcSelect">
-  <option value="https://polygon-rpc.com">Polygon Mainnet (public)</option>
-  <option value="https://rpc.ankr.com/polygon">Polygon Mainnet (ankr)</option>
-  <option value="https://rpc-mumbai.maticvigil.com">Mumbai Testnet</option>
-</select>
+  <label>RPC / Network (Polygon)</label>
+  <select id="rpcSelect">
+    <option value="https://polygon-rpc.com">Polygon Mainnet (public)</option>
+    <option value="https://rpc.ankr.com/polygon">Polygon Mainnet (ankr)</option>
+    <option value="https://rpc-mumbai.maticvigil.com">Mumbai Testnet</option>
+  </select>
 
-<label>MetaMask / Wallet</label>
-<button id="connectWallet">Connect Wallet</button>
-<div id="walletInfo">Not connected</div>
+  <label>MetaMask / Wallet</label>
+  <button id="connectBtn">Connect Wallet</button>
+  <div id="walletInfo"></div>
 
-<hr/>
+  <hr/>
 
-<label>USDC token address</label>
-<input id="usdc" value="0x2791Bca1f2de4661ED88A30C99A7a9449Aa84174" />
+  <label>USDC token address</label>
+  <input id="usdc" value="0x2791Bca1f2de4661ED88A30C99A7a9449Aa84174" />
 
-<label>USDC decimals (Polygon USDC = 6)</label>
-<input id="usdcDecimals" value="6" />
+  <label>USDC decimals</label>
+  <input id="usdcDecimals" value="6" />
 
-<label>Routers to loop (UniswapV2-style)</label>
-<input id="routers" value="0xa5E0829CaCEd8fFdd4De3c43696c57f7D7A678ff,0x1b02da8cb0d097eb8d57a175b88c7d8b47997506" />
+  <label>Routers (comma separated)</label>
+  <input id="routers" value="0xa5E0829CaCEd8fFdd4De3c43696c57f7D7A678ff,0x1b02da8cb0d097eb8d57a175b88c7d8b47997506" />
 
-<label>Tokens to test (comma separated)</label>
-<input id="tokens" value="0x7ceb23fd6bc0add59e62ac25578270cff1b9f619" />
+  <label>Tokens to test</label>
+  <input id="tokens" value="0x7ceb23fd6bc0add59e62ac25578270cff1b9f619" />
 
-<label>Amount in USDC (human)</label>
-<div class="row">
-  <input id="amountHuman" placeholder="e.g. 1.0" />
-  <button id="simulateBtn" class="small">Simulate all paths</button>
-</div>
+  <label>Amount in USDC</label>
+  <div class="row">
+    <input id="amountHuman" placeholder="e.g. 1.0" />
+    <button id="simulateBtn" class="small">Simulate all paths</button>
+  </div>
 
-<label>Choose pair from simulation results</label>
-<select id="simResults"></select>
+  <label>Choose pair</label>
+  <select id="simResults"></select>
 
-<div class="row">
-  <button id="runBtn">Send executeArbitrage (selected)</button>
-  <button id="estimateGasBtn">Estimate Gas (selected)</button>
-  <button id="withdrawUSDC">Withdraw USDC</button>
-</div>
+  <div class="row">
+    <button id="runBtn">Send executeArbitrage</button>
+    <button id="estimateGasBtn">Estimate Gas</button>
+  </div>
 
-<label>Logs & receipts</label>
-<div id="log">Logs will appear here...</div>
+  <label>Logs & receipts</label>
+  <div id="log">Logs will appear here...</div>
 
-<script>
-window.addEventListener('load', function() {
-    const $ = id => document.getElementById(id);
-    const logEl = $("log");
-    function log(...args){ logEl.textContent += "\n" + args.join(" "); logEl.scrollTop = logEl.scrollHeight; }
+  <!-- ✅ Load ethers first -->
+  <script src="https://cdn.jsdelivr.net/npm/ethers@5.7.2/dist/ethers.min.js"></script>
 
-    const CONTRACT_ADDRESS = "0xC42293b1C5cFDd7D5cf2ad1c46704e706bb755f7";
-    const CONTRACT_ABI = [/* insert ABI here, same as user-provided */];
-    const ROUTER_ABI = [
-        "function getAmountsOut(uint256 amountIn, address[] memory path) view returns (uint256[] memory amounts)",
-        "function swapExactTokensForTokens(uint amountIn,uint amountOutMin,address[] calldata path,address to,uint deadline) external returns (uint[] memory amounts)"
-    ];
-
-    let provider, signer, userAddress, contract;
-
-    async function connectWallet() {
-        if(!window.ethereum){ alert("MetaMask not detected"); return; }
-        try{
-            await window.ethereum.request({method:'eth_requestAccounts'});
-            provider = new ethers.providers.Web3Provider(window.ethereum);
-            signer = provider.getSigner();
-            userAddress = await signer.getAddress();
-            $("walletInfo").textContent = userAddress;
-            contract = new ethers.Contract(CONTRACT_ADDRESS, CONTRACT_ABI, signer);
-            log("[Wallet connected]", userAddress);
-        } catch(e){ log("[Wallet connect failed]", e.message || e); }
-    }
-
-    async function updateBalances() {
-        if(!contract) return;
-        try{
-            const bal = await contract.getContractBalance();
-            const decimals = Number($("usdcDecimals").value)||6;
-            log("Contract USDC balance:", ethers.utils.formatUnits(bal,decimals));
-        } catch(e){ log("Failed to read balance", e); }
-    }
-
-    function fmt(num,maxFrac=6){ return Number(num).toFixed(maxFrac); }
-
-    async function manualScan(){ log("Manual scan triggered"); }
-
-    function onScanIntervalChange(){ log("Scan interval update (not implemented)"); }
-
-    async function withdrawUSDC(){
-        if(!contract) return alert("Connect wallet first");
-        try{
-            const tx = await contract.withdrawProfits({gasLimit:200000});
-            log("Withdraw tx sent:", tx.hash);
-            const receipt = await tx.wait();
-            log("Withdraw mined:", receipt.transactionHash, "status:", receipt.status);
-            updateBalances();
-        } catch(e){ log("Withdraw failed:", e.message || e); }
-    }
-
-    // Event listeners
-    $("connectWallet").addEventListener("click", connectWallet);
-    $("scanNow").addEventListener("click", manualScan);
-    $("withdrawUSDC").addEventListener("click", withdrawUSDC);
-    $("scanIntervalSec")?.addEventListener("input", onScanIntervalChange);
-
-    // Restore transaction history placeholder
-    function restoreTransactionHistory(){ log("Transaction history restored (placeholder)"); }
-    restoreTransactionHistory();
-    onScanIntervalChange();
-});
-</script>
+  <!-- ✅ Then load your app logic -->
+  <script defer src="app.js"></script>
 </body>
 </html>
