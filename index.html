@@ -1,0 +1,95 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<title>Polygon Arbitrage Frontend</title>
+<script src="https://cdn.jsdelivr.net/npm/ethers@5.7.2/dist/ethers.min.js"></script>
+<style>
+body { font-family: Arial, sans-serif; max-width:800px; margin:auto; padding:20px; }
+button { padding:10px; margin:5px 0; }
+#log { background:#f4f4f4; padding:10px; height:200px; overflow:auto; white-space:pre-wrap; }
+</style>
+</head>
+<body>
+
+<h2>Polygon Arbitrage Frontend</h2>
+
+<button id="connectBtn">Connect Wallet</button>
+<div>Connected Wallet: <span id="wallet">Not connected</span></div>
+
+<hr>
+<button id="getBalanceBtn">Get Contract USDC Balance</button>
+<div>Contract Balance: <span id="balance">0</span></div>
+
+<script>
+// Contract info
+const CONTRACT_ADDRESS = "0xC42293b1C5cFDd7D5cf2ad1c46704e706bb755f7";
+const CONTRACT_ABI = [
+    {
+        "inputs":[{"internalType":"address","name":"buyRouter","type":"address"},{"internalType":"address","name":"sellRouter","type":"address"},{"internalType":"address","name":"token","type":"address"},{"internalType":"uint256","name":"amountIn","type":"uint256"}],
+        "name":"executeArbitrage","outputs":[],"stateMutability":"nonpayable","type":"function"
+    },
+    {"inputs":[],"name":"getContractBalance","outputs":[{"internalType":"uint256","name":"","type":"uint256"}],"stateMutability":"view","type":"function"}
+];
+
+let provider, signer, contract;
+
+async function connectWallet() {
+    if (!window.ethereum) {
+        alert("MetaMask not detected!");
+        return;
+    }
+    try {
+        provider = new ethers.providers.Web3Provider(window.ethereum);
+        await provider.send("eth_requestAccounts", []);
+        signer = provider.getSigner();
+        const account = await signer.getAddress();
+        document.getElementById("wallet").textContent = account;
+        contract = new ethers.Contract(CONTRACT_ADDRESS, CONTRACT_ABI, signer);
+        log("Wallet connected: " + account);
+    } catch(e) {
+        log("Wallet connection failed: " + e.message);
+    }
+}
+
+async function getBalance() {
+    if (!contract) { alert("Connect wallet first!"); return; }
+    try {
+        const balance = await contract.getContractBalance();
+        document.getElementById("balance").textContent = ethers.utils.formatUnits(balance, 6);
+        log("Contract USDC Balance: " + ethers.utils.formatUnits(balance,6));
+    } catch(e) {
+        log("Error reading balance: " + e.message);
+    }
+}
+
+function log(msg) {
+    const el = document.getElementById("log");
+    el.textContent += "\n" + msg;
+    el.scrollTop = el.scrollHeight;
+}
+
+document.getElementById("connectBtn").addEventListener("click", connectWallet);
+document.getElementById("getBalanceBtn").addEventListener("click", getBalance);
+
+// Optional: handle account change
+if(window.ethereum){
+    window.ethereum.on("accountsChanged", (accounts)=>{
+        if(accounts.length>0){
+            document.getElementById("wallet").textContent = accounts[0];
+            signer = provider.getSigner();
+            contract = new ethers.Contract(CONTRACT_ADDRESS, CONTRACT_ABI, signer);
+            log("Account changed: " + accounts[0]);
+        } else {
+            document.getElementById("wallet").textContent = "Not connected";
+            log("Account disconnected");
+        }
+    });
+}
+</script>
+
+<h3>Logs</h3>
+<div id="log"></div>
+
+</body>
+</html>
